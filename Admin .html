@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PromptHub Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            background-color: #0F172A;
+            color: #E2E8F0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .input-box {
+            background: #1E293B;
+            border: 1px solid #334155;
+            color: white;
+            padding: 12px;
+            border-radius: 12px;
+            width: 100%;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .input-box:focus {
+            border-color: #06B6D4;
+            box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+        }
+        .fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #06B6D4, #2563EB);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 10px 25px -5px rgba(6, 182, 212, 0.5);
+            transition: transform 0.2s;
+            z-index: 50;
+        }
+        .fab:active { transform: scale(0.90); }
+        .view-section { display: none; animation: fadeIn 0.3s ease; }
+        .active-view { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen">
+
+    <div id="view-login" class="fixed inset-0 z-50 bg-[#0F172A] flex flex-col items-center justify-center p-6">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center mb-6 shadow-lg shadow-cyan-900/40">
+            <i class="fa-solid fa-user-shield text-2xl text-white"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-white mb-2">Admin Access</h1>
+        <p class="text-slate-400 text-sm mb-8">Enter PIN to manage database</p>
+        
+        <div class="flex gap-4 mb-8">
+            <input type="password" id="pin-input" class="bg-slate-800 border border-slate-700 text-white text-center text-2xl rounded-xl w-48 py-3 tracking-[0.5em] focus:outline-none focus:border-cyan-500 transition-colors" maxlength="4" placeholder="••••">
+        </div>
+        
+        <button onclick="checkPin()" class="w-full max-w-xs bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3.5 rounded-xl transition-all active:scale-95">
+            Unlock Panel
+        </button>
+    </div>
+
+    <div id="main-app" class="hidden pb-24">
+        
+        <header class="sticky top-0 z-40 glass px-5 py-4 flex items-center justify-between">
+            <h1 class="text-lg font-bold flex items-center gap-2">
+                <i class="fa-solid fa-database text-cyan-400"></i> Admin Panel
+            </h1>
+            <button onclick="logout()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-right-from-bracket"></i></button>
+        </header>
+
+        <div class="grid grid-cols-3 gap-3 p-5">
+            <div class="bg-slate-800/50 p-3 rounded-2xl border border-slate-700 text-center">
+                <div class="text-slate-400 text-[10px] font-bold uppercase mb-1">Prompts</div>
+                <div class="text-xl font-bold text-white" id="stat-prompts">--</div>
+            </div>
+            <div class="bg-slate-800/50 p-3 rounded-2xl border border-slate-700 text-center">
+                <div class="text-slate-400 text-[10px] font-bold uppercase mb-1">Users</div>
+                <div class="text-xl font-bold text-white" id="stat-users">--</div>
+            </div>
+            <div class="bg-slate-800/50 p-3 rounded-2xl border border-slate-700 text-center">
+                <div class="text-slate-400 text-[10px] font-bold uppercase mb-1">Tools</div>
+                <div class="text-xl font-bold text-white" id="stat-tools">--</div>
+            </div>
+        </div>
+
+        <div class="px-5 mb-4 grid grid-cols-4 gap-2">
+            <button onclick="switchTab('prompts')" id="tab-prompts" class="py-2 rounded-lg bg-cyan-600 text-white text-[10px] font-bold transition-all">Prompts</button>
+            <button onclick="switchTab('tools')" id="tab-tools" class="py-2 rounded-lg bg-slate-800 text-slate-400 text-[10px] font-bold transition-all">Tools</button>
+            <button onclick="switchTab('users')" id="tab-users" class="py-2 rounded-lg bg-slate-800 text-slate-400 text-[10px] font-bold transition-all">Users</button>
+            <button onclick="switchTab('settings')" id="tab-settings" class="py-2 rounded-lg bg-slate-800 text-slate-400 text-[10px] font-bold transition-all">Config</button>
+        </div>
+
+        <div id="view-prompts" class="view-section active-view px-5 space-y-3">
+            <div id="prompts-list">
+                <div class="text-center py-10 text-slate-500 text-sm">Loading prompts...</div>
+            </div>
+        </div>
+
+        <div id="view-tools" class="view-section px-5 space-y-3 hidden">
+            <div id="tools-list" class="space-y-3">
+                <div class="text-center py-10 text-slate-500 text-sm">Loading tools...</div>
+            </div>
+        </div>
+
+        <div id="view-users" class="view-section px-5 space-y-3 hidden">
+             <div class="relative mb-4">
+                <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                <input type="text" id="user-search" placeholder="Search user ID..." class="w-full bg-slate-800 text-xs py-3 pl-9 pr-4 rounded-xl border border-slate-700 focus:border-cyan-500 outline-none text-white">
+            </div>
+            <div id="users-list"></div>
+        </div>
+
+        <div id="view-settings" class="view-section px-5 space-y-4 hidden">
+            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700">
+                <h3 class="text-sm font-bold text-white mb-4 border-l-4 border-cyan-500 pl-2">Ad Configuration</h3>
+                <div class="mb-3">
+                    <label class="text-xs text-slate-400 block mb-1.5 ml-1">Ad Zone ID</label>
+                    <input type="text" id="conf-zone" class="input-box text-cyan-400 font-mono" placeholder="10312256">
+                </div>
+            </div>
+            <div class="bg-slate-800/80 p-5 rounded-2xl border border-slate-700">
+                <h3 class="text-sm font-bold text-white mb-4 border-l-4 border-amber-500 pl-2">Reward Settings</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1.5 ml-1">Ref Reward</label>
+                        <input type="number" id="conf-ref" class="input-box" placeholder="50">
+                    </div>
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1.5 ml-1">Ad Reward</label>
+                        <input type="number" id="conf-ad" class="input-box" placeholder="5">
+                    </div>
+                </div>
+            </div>
+            <button onclick="saveConfig()" class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-all">Update Config</button>
+        </div>
+
+    </div>
+
+    <button onclick="handleFabClick()" id="add-btn" class="fab hidden">
+        <i class="fa-solid fa-plus text-xl"></i>
+    </button>
+
+    <div id="modal" class="fixed inset-0 z-50 bg-black/80 hidden backdrop-blur-sm flex items-end sm:items-center justify-center">
+        <div class="bg-[#1E293B] w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 border-t sm:border border-slate-700 animate__animated animate__slideInUp">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white" id="modal-title">New Prompt</h2>
+                <button onclick="document.getElementById('modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="prompt-form" onsubmit="savePrompt(event)" class="space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar pb-10">
+                <input type="hidden" id="edit-id">
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1.5 ml-1">Title</label>
+                    <input type="text" id="inp-title" class="input-box" placeholder="e.g. Cyberpunk City" required>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs text-slate-400 block mb-1.5 ml-1">Category</label>
+                        <input type="text" id="inp-cat" list="category-suggestions" class="input-box" placeholder="Type category..." required>
+                        <datalist id="category-suggestions"><option value="Anime"><option value="Realistic"><option value="3D Art"><option value="Logo"></datalist>
+                    </div>
+                    <div>
+                         <label class="text-xs text-slate-400 block mb-1.5 ml-1">Image URL</label>
+                         <input type="url" id="inp-img" class="input-box" placeholder="https://..." required>
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1.5 ml-1">Prompt Text</label>
+                    <textarea id="inp-prompt" class="input-box h-32" placeholder="Enter the full AI prompt here..." required></textarea>
+                </div>
+                <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-4 rounded-xl mt-4">Save Prompt</button>
+                <button type="button" id="btn-delete" onclick="deletePrompt()" class="hidden w-full bg-red-900/50 text-red-400 border border-red-500/30 font-bold py-3 rounded-xl">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="tool-modal" class="fixed inset-0 z-50 bg-black/80 hidden backdrop-blur-sm flex items-end sm:items-center justify-center">
+        <div class="bg-[#1E293B] w-full max-w-md rounded-t-2xl sm:rounded-2xl p-6 border-t sm:border border-slate-700 animate__animated animate__slideInUp">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white" id="tool-modal-title">New Tool/Site</h2>
+                <button onclick="document.getElementById('tool-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-slate-800 text-slate-400 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="tool-form" onsubmit="saveTool(event)" class="space-y-4">
+                <input type="hidden" id="tool-edit-id">
+                
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1.5 ml-1">Site Name</label>
+                    <input type="text" id="tool-name" class="input-box" placeholder="e.g. ChatGPT" required>
+                </div>
+                
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1.5 ml-1">Website URL (Link)</label>
+                    <input type="url" id="tool-url" class="input-box" placeholder="https://..." required>
+                </div>
+
+                <div>
+                     <label class="text-xs text-slate-400 block mb-1.5 ml-1">Logo URL (Optional)</label>
+                     <input type="url" id="tool-logo" class="input-box" placeholder="https://...png">
+                     <p class="text-[10px] text-slate-500 mt-1">Leave empty for default icon.</p>
+                </div>
+
+                <div>
+                    <label class="text-xs text-slate-400 block mb-1.5 ml-1">Short Description</label>
+                    <input type="text" id="tool-desc" class="input-box" placeholder="e.g. Best for text generation">
+                </div>
+
+                <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-4 rounded-xl mt-4">Save Tool</button>
+                <button type="button" id="btn-tool-delete" onclick="deleteTool()" class="hidden w-full bg-red-900/50 text-red-400 border border-red-500/30 font-bold py-3 rounded-xl">Delete Tool</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="user-modal" class="fixed inset-0 z-50 bg-black/80 hidden backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-[#1E293B] w-full max-w-sm rounded-2xl p-6 border border-slate-700">
+             <h2 class="text-lg font-bold text-white mb-4">Manage User</h2>
+             <input type="hidden" id="edit-user-id">
+             <p class="text-xs text-slate-400 mb-2">User ID: <span id="display-uid" class="text-cyan-400 font-mono"></span></p>
+             <div class="mb-4">
+                <label class="text-xs text-slate-400 block mb-1.5">Add Coins</label>
+                <div class="flex gap-2">
+                    <input type="number" id="inp-coins" class="input-box" placeholder="Amount">
+                    <button onclick="addCoins()" class="bg-emerald-600 text-white px-4 rounded-xl font-bold text-xs">Add</button>
+                </div>
+             </div>
+             <button onclick="document.getElementById('user-modal').classList.add('hidden')" class="w-full bg-slate-800 text-slate-400 py-3 rounded-xl mt-2 text-xs">Close</button>
+        </div>
+    </div>
+
+    <div id="toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl flex items-center gap-2 transition-all duration-300 opacity-0 translate-y-[-20px] z-[100]">
+        <i class="fa-solid fa-check-circle"></i>
+        <span id="toast-msg">Success</span>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, doc, addDoc, updateDoc, deleteDoc, getDoc, setDoc, onSnapshot, query, orderBy, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // CONFIG
+        const firebaseConfig = {
+            apiKey: "AIzaSyAMbafYsnv4VI0zYrQnQ-hHfAZ3ImlJo6U",
+            authDomain: "crashgame-a8f75.firebaseapp.com",
+            projectId: "crashgame-a8f75",
+            storageBucket: "crashgame-a8f75.firebasestorage.app",
+            messagingSenderId: "1020125744751",
+            appId: "1:1020125744751:web:97128d1d868f4907b9c79a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // AUTH
+        window.checkPin = () => {
+            if(document.getElementById('pin-input').value === "1234") { 
+                document.getElementById('view-login').style.display = 'none';
+                document.getElementById('main-app').classList.remove('hidden');
+                document.getElementById('add-btn').classList.remove('hidden');
+                document.getElementById('add-btn').classList.add('flex');
+                initData();
+            } else { alert("Wrong PIN!"); }
+        };
+        window.logout = () => location.reload();
+
+        // DATA STORE
+        let allPrompts = [];
+        let allUsers = [];
+        let allTools = [];
+        let currentTab = 'prompts';
+
+        function initData() {
+            loadConfig();
+
+            // PROMPTS
+            onSnapshot(query(collection(db, "prompts"), orderBy("createdAt", "desc")), (snap) => {
+                allPrompts = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                document.getElementById('stat-prompts').innerText = allPrompts.length;
+                renderPrompts();
+            });
+
+            // USERS
+            onSnapshot(collection(db, "users"), (snap) => {
+                allUsers = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                document.getElementById('stat-users').innerText = allUsers.length;
+                renderUsers();
+            });
+
+            // TOOLS (NEW)
+            onSnapshot(collection(db, "sites"), (snap) => {
+                allTools = snap.docs.map(d => ({id: d.id, ...d.data()}));
+                document.getElementById('stat-tools').innerText = allTools.length;
+                renderTools();
+            });
+        }
+
+        // --- RENDERERS ---
+        function renderPrompts() {
+            document.getElementById('prompts-list').innerHTML = allPrompts.map(p => `
+                <div onclick="editPrompt('${p.id}')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex gap-3 items-center active:scale-[0.98] transition-transform">
+                    <img src="${p.image}" class="w-12 h-12 rounded-lg object-cover bg-black/20" onerror="this.src='https://via.placeholder.com/50'">
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-white font-bold text-sm truncate">${p.title}</h4>
+                        <p class="text-xs text-slate-400 border border-slate-700 inline-block px-1.5 rounded mt-1">${p.category}</p>
+                    </div>
+                    <i class="fa-solid fa-pen-to-square text-slate-500"></i>
+                </div>
+            `).join('');
+        }
+
+        function renderTools() {
+            document.getElementById('tools-list').innerHTML = allTools.map(t => `
+                <div onclick="editTool('${t.id}')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex gap-3 items-center active:scale-[0.98] transition-transform">
+                    <div class="w-12 h-12 rounded-lg bg-slate-700 flex items-center justify-center border border-white/5 overflow-hidden">
+                        <img src="${t.logo}" class="w-8 h-8 object-contain" onerror="this.src='https://cdn-icons-png.flaticon.com/512/1006/1006771.png'">
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h4 class="text-white font-bold text-sm truncate">${t.name}</h4>
+                        <p class="text-xs text-cyan-400 truncate">${t.url}</p>
+                    </div>
+                    <i class="fa-solid fa-pen-to-square text-slate-500"></i>
+                </div>
+            `).join('');
+        }
+
+        function renderUsers() {
+            const search = document.getElementById('user-search').value.toLowerCase();
+            const filtered = allUsers.filter(u => (u.firstName && u.firstName.toLowerCase().includes(search)) || (u.uid && u.uid.includes(search)));
+            document.getElementById('users-list').innerHTML = filtered.map(u => `
+                <div onclick="manageUser('${u.id}')" class="bg-slate-800 p-3 rounded-xl border border-slate-700 flex justify-between items-center mb-2">
+                    <div>
+                        <h4 class="text-white font-bold text-xs">${u.firstName || 'Guest'}</h4>
+                        <p class="text-[10px] text-slate-500 font-mono">ID: ${u.uid.substring(0,6)}...</p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-amber-400 font-bold text-sm">${u.coins || 0} <i class="fa-solid fa-coins text-[10px]"></i></div>
+                        <div class="text-[10px] text-slate-500">${u.referralCount || 0} Ref</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        document.getElementById('user-search').addEventListener('input', renderUsers);
+
+        // --- PROMPT CRUD ---
+        window.editPrompt = (id) => {
+            const p = allPrompts.find(x => x.id === id);
+            document.getElementById('edit-id').value = id;
+            document.getElementById('inp-title').value = p.title;
+            document.getElementById('inp-cat').value = p.category; 
+            document.getElementById('inp-img').value = p.image;
+            document.getElementById('inp-prompt').value = p.prompt;
+            document.getElementById('modal-title').innerText = "Edit Prompt";
+            document.getElementById('btn-delete').classList.remove('hidden');
+            document.getElementById('modal').classList.remove('hidden');
+        };
+
+        window.savePrompt = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const data = {
+                title: document.getElementById('inp-title').value,
+                category: document.getElementById('inp-cat').value, 
+                image: document.getElementById('inp-img').value,
+                prompt: document.getElementById('inp-prompt').value,
+                createdAt: Date.now() 
+            };
+            try {
+                if(id) await updateDoc(doc(db, "prompts", id), data);
+                else await addDoc(collection(db, "prompts"), data);
+                document.getElementById('modal').classList.add('hidden');
+                showToast("Saved Successfully!");
+            } catch(err) { alert(err.message); }
+        };
+
+        window.deletePrompt = async () => {
+            if(!confirm("Delete this prompt?")) return;
+            await deleteDoc(doc(db, "prompts", document.getElementById('edit-id').value));
+            document.getElementById('modal').classList.add('hidden');
+            showToast("Deleted!");
+        };
+
+        // --- TOOL CRUD (NEW) ---
+        window.openToolModal = () => {
+             document.getElementById('tool-form').reset();
+             document.getElementById('tool-edit-id').value = "";
+             document.getElementById('tool-modal-title').innerText = "New Tool/Site";
+             document.getElementById('btn-tool-delete').classList.add('hidden');
+             document.getElementById('tool-modal').classList.remove('hidden');
+        };
+
+        window.editTool = (id) => {
+            const t = allTools.find(x => x.id === id);
+            document.getElementById('tool-edit-id').value = id;
+            document.getElementById('tool-name').value = t.name;
+            document.getElementById('tool-url').value = t.url;
+            document.getElementById('tool-logo').value = t.logo || "";
+            document.getElementById('tool-desc').value = t.description || "";
+            document.getElementById('tool-modal-title').innerText = "Edit Tool";
+            document.getElementById('btn-tool-delete').classList.remove('hidden');
+            document.getElementById('tool-modal').classList.remove('hidden');
+        };
+
+        window.saveTool = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('tool-edit-id').value;
+            const data = {
+                name: document.getElementById('tool-name').value,
+                url: document.getElementById('tool-url').value,
+                logo: document.getElementById('tool-logo').value,
+                description: document.getElementById('tool-desc').value
+            };
+            try {
+                if(id) await updateDoc(doc(db, "sites", id), data);
+                else await addDoc(collection(db, "sites"), data);
+                document.getElementById('tool-modal').classList.add('hidden');
+                showToast("Tool Saved!");
+            } catch(err) { alert(err.message); }
+        };
+
+        window.deleteTool = async () => {
+             if(!confirm("Delete this tool?")) return;
+             await deleteDoc(doc(db, "sites", document.getElementById('tool-edit-id').value));
+             document.getElementById('tool-modal').classList.add('hidden');
+             showToast("Tool Deleted!");
+        };
+
+        // --- USER & CONFIG ---
+        window.manageUser = (uid) => {
+            document.getElementById('edit-user-id').value = uid;
+            document.getElementById('display-uid').innerText = uid;
+            document.getElementById('user-modal').classList.remove('hidden');
+        };
+        window.addCoins = async () => {
+            const uid = document.getElementById('edit-user-id').value;
+            const amt = parseInt(document.getElementById('inp-coins').value);
+            if(uid && amt) {
+                await updateDoc(doc(db, "users", uid), { coins: increment(amt) });
+                showToast(`Sent ${amt} coins!`);
+                document.getElementById('user-modal').classList.add('hidden');
+            }
+        };
+
+        async function loadConfig() {
+            try {
+                const s = await getDoc(doc(db, "settings", "config"));
+                if (s.exists()) {
+                    document.getElementById('conf-zone').value = s.data().zoneId;
+                    document.getElementById('conf-ref').value = s.data().referralReward;
+                    document.getElementById('conf-ad').value = s.data().adReward;
+                }
+            } catch (e) {}
+        }
+        window.saveConfig = async () => {
+            await setDoc(doc(db, "settings", "config"), {
+                zoneId: document.getElementById('conf-zone').value,
+                referralReward: parseInt(document.getElementById('conf-ref').value),
+                adReward: parseInt(document.getElementById('conf-ad').value)
+            });
+            showToast("Config Updated!");
+        };
+
+        // --- UI LOGIC ---
+        window.switchTab = (tab) => {
+            currentTab = tab;
+            document.querySelectorAll('.view-section').forEach(el => { el.classList.remove('active-view'); el.classList.add('hidden'); });
+            document.getElementById(`view-${tab}`).classList.remove('hidden');
+            document.getElementById(`view-${tab}`).classList.add('active-view');
+
+            ['prompts', 'users', 'settings', 'tools'].forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                btn.classList.replace('bg-cyan-600', 'bg-slate-800');
+                btn.classList.replace('text-white', 'text-slate-400');
+            });
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            activeBtn.classList.replace('bg-slate-800', 'bg-cyan-600');
+            activeBtn.classList.replace('text-slate-400', 'text-white');
+
+            const fab = document.getElementById('add-btn');
+            if(tab === 'prompts' || tab === 'tools') {
+                fab.classList.remove('hidden'); fab.classList.add('flex');
+            } else {
+                fab.classList.add('hidden'); fab.classList.remove('flex');
+            }
+        };
+
+        window.handleFabClick = () => {
+            if(currentTab === 'prompts') {
+                document.getElementById('prompt-form').reset();
+                document.getElementById('edit-id').value = "";
+                document.getElementById('modal-title').innerText = "New Prompt";
+                document.getElementById('btn-delete').classList.add('hidden');
+                document.getElementById('modal').classList.remove('hidden');
+            } else if(currentTab === 'tools') {
+                openToolModal();
+            }
+        };
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            t.classList.remove('opacity-0', 'translate-y-[-20px]');
+            setTimeout(() => t.classList.add('opacity-0', 'translate-y-[-20px]'), 2000);
+        }
+    </script>
+</body>
+</html>
